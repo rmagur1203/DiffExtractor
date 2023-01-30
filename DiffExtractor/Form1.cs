@@ -66,6 +66,7 @@ namespace DiffExtractor
             {
                 List<string> diffFiles = await FindDiffFiles(".");
                 diffFiles = diffFiles.Select(x => Path.GetRelativePath(targetPath, x)).ToList();
+
                 this.BeginInvoke(() =>
                 {
                     using (FolderBrowserDialog dialog = new FolderBrowserDialog())
@@ -101,6 +102,7 @@ namespace DiffExtractor
                 treePair.Add(file.FullName, fileNode);
                 newNode.Nodes.Add(fileNode);
             }
+            treePair.Add(directory.FullName, newNode);
             return newNode;
         }
 
@@ -111,8 +113,21 @@ namespace DiffExtractor
                 List<string> diffFiles = new List<string>();
                 DirectoryInfo originDir = new DirectoryInfo(Path.Combine(originPath, relativePath));
                 DirectoryInfo targetDir = new DirectoryInfo(Path.Combine(targetPath, relativePath));
-
+                
                 List<Task> tasks = new();
+                
+                if (!originDir.Exists)
+                {
+                    setIsDiff(targetDir.FullName);
+                    IEnumerable<string> files = targetDir.GetFiles().Select(x => x.FullName);
+                    foreach (var file in files)
+                    {
+                        setIsDiff(file);
+                        diffFiles.Add(file);
+                    }
+                    diffFiles.AddRange(targetDir.GetDirectories().SelectMany(x => FindDiffFiles(Path.Combine(relativePath, x.Name)).Result));
+                    return diffFiles;
+                }
 
                 foreach (DirectoryInfo subDir in targetDir.GetDirectories())
                 {
@@ -157,17 +172,21 @@ namespace DiffExtractor
         private void setIsDiff(string targetFilePath)
         {
             treePair[targetFilePath].BackColor = Color.Red;
-            updateNode(treePair[targetFilePath].Parent, Color.Orange);
+            updateNode(treePair[targetFilePath].Parent, Color.Red);
         }
 
         private void setIsSame(string targetFilePath)
         {
-            treePair[targetFilePath].BackColor = Color.Green;
+            treePair[targetFilePath].BackColor = Color.LightGreen;
+            updateNode(treePair[targetFilePath].Parent, Color.LightGreen);
         }
 
         private void updateNode(TreeNode node, Color color)
         {
-            node.BackColor = color;
+            if (node.BackColor == default)
+                node.BackColor = color;
+            else if(node.BackColor != color)
+                node.BackColor = Color.Orange;
             if (node.Parent != null)
                 updateNode(node.Parent, color);
         }
