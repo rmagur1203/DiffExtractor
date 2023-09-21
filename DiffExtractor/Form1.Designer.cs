@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.originalGroupBox = new System.Windows.Forms.GroupBox();
             this.selectOriginal = new System.Windows.Forms.Button();
@@ -37,6 +38,8 @@
             this.targetFile = new System.Windows.Forms.TextBox();
             this.extractButton = new System.Windows.Forms.Button();
             this.treeView1 = new System.Windows.Forms.TreeView();
+            this.progressLabel = new System.Windows.Forms.Label();
+            this.updateProgressTimer = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -136,16 +139,32 @@
             // 
             // treeView1
             // 
-            this.treeView1.Location = new System.Drawing.Point(12, 94);
+            this.treeView1.Location = new System.Drawing.Point(12, 109);
             this.treeView1.Name = "treeView1";
-            this.treeView1.Size = new System.Drawing.Size(776, 315);
+            this.treeView1.Size = new System.Drawing.Size(776, 300);
             this.treeView1.TabIndex = 2;
+            // 
+            // progressLabel
+            // 
+            this.progressLabel.AutoSize = true;
+            this.progressLabel.Location = new System.Drawing.Point(12, 91);
+            this.progressLabel.Name = "progressLabel";
+            this.progressLabel.Size = new System.Drawing.Size(55, 15);
+            this.progressLabel.TabIndex = 3;
+            this.progressLabel.Text = "waiting...";
+            // 
+            // updateProgressTimer
+            // 
+            this.updateProgressTimer.Enabled = true;
+            this.updateProgressTimer.Interval = 1000;
+            this.updateProgressTimer.Tick += new System.EventHandler(this.updateProgressTimer_Tick);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.progressLabel);
             this.Controls.Add(this.treeView1);
             this.Controls.Add(this.extractButton);
             this.Controls.Add(this.splitContainer1);
@@ -160,6 +179,7 @@
             this.targetGroupBox.ResumeLayout(false);
             this.targetGroupBox.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -173,5 +193,7 @@
         private TextBox targetFile;
         private Button extractButton;
         private TreeView treeView1;
+        private Label progressLabel;
+        private System.Windows.Forms.Timer updateProgressTimer;
     }
 }

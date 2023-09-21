@@ -5,48 +5,35 @@ namespace DiffExtractor
 {
     public partial class Form1 : Form
     {
+        private long fileCount = -1;
+        private long checkedFileCount = 0;
+
         public Form1()
         {
             InitializeComponent();
         }
 
-        private Dictionary<string, TreeNode> treePair = new Dictionary<string, TreeNode>();
+        private readonly Dictionary<string, TreeNode> treePair = new();
 
-        private string originPath
-        {
-            get
-            {
-                return originalFile.Text;
-            }
-        }
+        private string originPath => originalFile.Text;
 
-        private string targetPath
-        {
-            get
-            {
-                return targetFile.Text;
-            }
-        }
+        private string targetPath => targetFile.Text;
 
         private void selectOriginal_Click(object sender, EventArgs e)
         {
-            using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+            using FolderBrowserDialog dialog = new();
+            if (dialog.ShowDialog() == DialogResult.OK)
             {
-                if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    originalFile.Text = dialog.SelectedPath;
-                }
+                originalFile.Text = dialog.SelectedPath;
             }
         }
 
         private void selectTarget_Click(object sender, EventArgs e)
         {
-            using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+            using FolderBrowserDialog dialog = new();
+            if (dialog.ShowDialog() == DialogResult.OK)
             {
-                if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    targetFile.Text = dialog.SelectedPath;
-                }
+                targetFile.Text = dialog.SelectedPath;
             }
         }
 
@@ -54,35 +41,43 @@ namespace DiffExtractor
         {
             if (originPath == "" || targetPath == "")
             {
-                MessageBox.Show("¿øº»°ú ´ë»ó Æú´õ¸¦ ¼±ÅÃÇØÁÖ¼¼¿ä.");
+                _ = MessageBox.Show("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¼ï¿½ï¿½ï¿½.");
                 return;
             }
 
             treePair.Clear();
-            treeView1.Nodes.Add(createTree(new DirectoryInfo(targetPath)));
+            _ = treeView1.Nodes.Add(createTree(new DirectoryInfo(targetPath)));
             treeView1.Nodes[0]?.Expand();
 
-            Task.Run(async () =>
+            fileCount = 0;
+            checkedFileCount = 0;
+
+
+            _ = Task.Run(async () =>
             {
+                fileCount = Math.Max(
+                    Directory.GetFiles(originPath, "*.*", SearchOption.AllDirectories).Length,
+                    Directory.GetFiles(targetPath, "*.*", SearchOption.AllDirectories).Length
+                );
                 List<string> diffFiles = await FindDiffFiles(".");
                 diffFiles = diffFiles.Select(x => Path.GetRelativePath(targetPath, x)).ToList();
 
-                this.BeginInvoke(() =>
+                _ = BeginInvoke(() =>
                 {
-                    using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+                    using FolderBrowserDialog dialog = new();
+                    if (dialog.ShowDialog() == DialogResult.OK)
                     {
-                        if (dialog.ShowDialog() == DialogResult.OK)
+                        foreach (string file in diffFiles)
                         {
-                            foreach (string file in diffFiles)
-                            {
-                                string target = Path.Combine(dialog.SelectedPath, file);
-                                string origin = Path.Combine(targetPath, file);
-                                Directory.CreateDirectory(Path.GetDirectoryName(target));
-                                File.Copy(origin, target, true);
-                            }
-
-                            Process.Start("explorer.exe", dialog.SelectedPath);
+                            string target = Path.Combine(dialog.SelectedPath, file);
+                            string origin = Path.Combine(targetPath, file);
+                            _ = Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                            File.Copy(origin, target, true);
                         }
+
+                        _ = Process.Start("explorer.exe", dialog.SelectedPath);
+
+                        fileCount = -1;
                     }
                 });
             });
@@ -90,17 +85,19 @@ namespace DiffExtractor
 
         private TreeNode createTree(DirectoryInfo directory)
         {
-            TreeNode newNode = new TreeNode(directory.Name);
-            foreach (var subDirectory in directory.GetDirectories())
+            TreeNode newNode = new(directory.Name);
+            foreach (DirectoryInfo subDirectory in directory.GetDirectories())
             {
-                newNode.Nodes.Add(createTree(subDirectory));
+                _ = newNode.Nodes.Add(createTree(subDirectory));
             }
-            foreach (var file in directory.GetFiles())
+            foreach (FileInfo file in directory.GetFiles())
             {
-                TreeNode fileNode = new TreeNode(file.Name);
-                fileNode.Tag = file.FullName;
+                TreeNode fileNode = new(file.Name)
+                {
+                    Tag = file.FullName
+                };
                 treePair.Add(file.FullName, fileNode);
-                newNode.Nodes.Add(fileNode);
+                _ = newNode.Nodes.Add(fileNode);
             }
             treePair.Add(directory.FullName, newNode);
             return newNode;
@@ -110,24 +107,26 @@ namespace DiffExtractor
         {
             return Task.Run(() =>
             {
-                List<string> diffFiles = new List<string>();
-                DirectoryInfo originDir = new DirectoryInfo(Path.Combine(originPath, relativePath));
-                DirectoryInfo targetDir = new DirectoryInfo(Path.Combine(targetPath, relativePath));
-                
+                List<string> diffFiles = new();
+                DirectoryInfo originDir = new(Path.Combine(originPath, relativePath));
+                DirectoryInfo targetDir = new(Path.Combine(targetPath, relativePath));
+
                 List<Task> tasks = new();
-                
+
                 if (!originDir.Exists)
                 {
                     setIsDiff(targetDir.FullName);
                     IEnumerable<string> files = targetDir.GetFiles().Select(x => x.FullName);
-                    foreach (var file in files)
+                    foreach (string file in files)
                     {
                         setIsDiff(file);
                         diffFiles.Add(file);
+                        checkedFileCount++;
                     }
                     diffFiles.AddRange(targetDir.GetDirectories().SelectMany(x => FindDiffFiles(Path.Combine(relativePath, x.Name)).Result));
                     return diffFiles;
                 }
+
 
                 foreach (DirectoryInfo subDir in targetDir.GetDirectories())
                 {
@@ -141,6 +140,7 @@ namespace DiffExtractor
                 {
                     FileInfo? originFile = originDir.GetFiles().Where(f => f.Name == targetFile.Name).FirstOrDefault();
                     Console.WriteLine((originFile?.Name ?? "Not Found") + " : " + targetFile.Name);
+                    checkedFileCount++;
                     if (originFile == null || originFile.Length != targetFile.Length)
                     {
                         setIsDiff(targetFile.FullName);
@@ -154,7 +154,8 @@ namespace DiffExtractor
                             {
                                 setIsDiff(targetFile.FullName);
                                 diffFiles.Add(targetFile.FullName);
-                            } else
+                            }
+                            else
                             {
                                 setIsSame(targetFile.FullName);
                             }
@@ -164,7 +165,7 @@ namespace DiffExtractor
                 }
 
                 Task.WaitAll(tasks.ToArray());
-                
+
                 return diffFiles;
             });
         }
@@ -184,11 +185,21 @@ namespace DiffExtractor
         private void updateNode(TreeNode node, Color color)
         {
             if (node.BackColor == default)
+            {
                 node.BackColor = color;
-            else if(node.BackColor != color)
+                if (node.Parent != null)
+                {
+                    updateNode(node.Parent, color);
+                }
+            }
+            else if (node.BackColor != color)
+            {
                 node.BackColor = Color.Orange;
-            if (node.Parent != null)
-                updateNode(node.Parent, color);
+                if (node.Parent != null)
+                {
+                    updateNode(node.Parent, color);
+                }
+            }
         }
 
         private static async Task<bool> IsSameFile(FileInfo originFile, FileInfo targetFile)
@@ -198,16 +209,31 @@ namespace DiffExtractor
                 return false;
             }
 
-            Crc32 originHash = new Crc32();
+            Crc32 originHash = new();
             Task originHashTask = originHash.AppendAsync(originFile.OpenRead());
 
-            Crc32 targetHash = new Crc32();
+            Crc32 targetHash = new();
             Task targetHashTask = targetHash.AppendAsync(targetFile.OpenRead());
 
             await originHashTask;
             await targetHashTask;
 
             return originHash.GetCurrentHash().SequenceEqual(targetHash.GetCurrentHash());
+        }
+
+        private void updateProgressTimer_Tick(object sender, EventArgs e)
+        {
+            if (fileCount == -1)
+            {
+                progressLabel.Text = "waiting...";
+                return;
+            }
+            if (fileCount == 0)
+            {
+                progressLabel.Text = "calculating files...";
+                return;
+            }
+            progressLabel.Text = $"{checkedFileCount}/{fileCount}";
         }
     }
 }
